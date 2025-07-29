@@ -89,7 +89,7 @@ Open a new terminal, navigate to the project directory, activate your virtual en
 
 ```bash
 cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+fastapi dev main.py
 ```
 
 The FastAPI backend will be available at:
