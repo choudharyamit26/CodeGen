@@ -1,7 +1,10 @@
 # FastAPI + Streamlit Application
 
 This application consists of a FastAPI backend and a Streamlit frontend. Follow the instructions below to set up and run the application on your local machine or using Docker.
-
+## Groq api key
+```
+Get your own free groq api key from: https://groq.com/
+```
 ## Project Structure
 
 ```
