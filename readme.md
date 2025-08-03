@@ -1,9 +1,18 @@
-FastAPI + Streamlit Application
-This application consists of a FastAPI backend and a Streamlit frontend. Follow the instructions below to set up and run the application on your local machine or using Docker.
-Groq API Key
-Get your own free Groq API key from: https://groq.com/
+# FastAPI + Streamlit Application
 
-Project Structure
+This application consists of a **FastAPI backend** and a **Streamlit frontend**. Follow the instructions below to set up and run the application locally or using Docker.
+
+---
+
+## 🔑 Groq API Key
+
+Get your free Groq API key from: [https://groq.com/](https://groq.com/)
+
+---
+
+## 📁 Project Structure
+
+```
 project/
 ├── backend/
 │   ├── main.py
@@ -15,135 +24,159 @@ project/
 ├── Dockerfile
 ├── start.sh
 └── README.md
+```
 
-Local Development Setup
-Prerequisites
+---
 
-Python 3.8 or higher
-pip (Python package installer)
+## 🖥️ Local Development Setup
 
-1. Clone the Repository
+### Prerequisites
+
+- Python 3.8 or higher  
+- `pip` (Python package installer)
+
+### 1. Clone the Repository
+
+```bash
 git clone <your-repository-url>
 cd <project-directory>
+```
 
-2. Create and Activate Virtual Environment
-Windows
-# Create virtual environment
+### 2. Create and Activate Virtual Environment
+
+#### Windows
+
+```bash
 python -m venv venv
-
-# Activate virtual environment
 venv\Scripts\activate
-
-# To deactivate later
+# To deactivate:
 deactivate
+```
 
-Linux/Ubuntu
-# Create virtual environment
+#### Linux / Ubuntu / macOS
+
+```bash
 python3 -m venv venv
-
-# Activate virtual environment
 source venv/bin/activate
-
-# To deactivate later
+# To deactivate:
 deactivate
+```
 
-macOS
-# Create virtual environment
-python3 -m venv venv
+### 3. Install Dependencies
 
-# Activate virtual environment
-source venv/bin/activate
-
-# To deactivate later
-deactivate
-
-3. Install Dependencies
+```bash
 pip install -r requirements.txt
+```
 
-4. Run the Application
-Start FastAPI Backend (Development Mode)
-Open a new terminal, navigate to the project directory, activate your virtual environment, and run:
+### 4. Run the Application
+
+#### Start FastAPI Backend (Development Mode)
+
+```bash
 cd backend
 fastapi dev main.py
+```
 
-The FastAPI backend will be available at:
+- API: [http://localhost:8000](http://localhost:8000)  
+- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)  
+- Alternative docs: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
-API: http://localhost:8000
-Interactive API docs: http://localhost:8000/docs
-Alternative API docs: http://localhost:8000/redoc
+#### Start Streamlit Frontend
 
-Start Streamlit Frontend
-Open another terminal, navigate to the project directory, activate your virtual environment, and run:
+```bash
 cd frontend
 streamlit run app.py --server.port 8501
+```
 
-The Streamlit frontend will be available at: http://localhost:8501
-Docker Setup
-Prerequisites
+- Frontend: [http://localhost:8501](http://localhost:8501)
 
-Docker installed on your machine
+---
 
-Build and Run with Docker
+## 🐳 Docker Setup
 
-Build the Docker image:
+### Prerequisites
 
+- Docker installed on your machine
+
+### Build and Run with Docker
+
+#### Build the Docker image
+
+```bash
 docker build -t codegen-app .
+```
 
+#### Run the Docker container
 
-Run the Docker container:
+##### Interactive Mode
 
-Interactive Mode
+```bash
 docker run -p 8000:8000 -p 8501:8501 --env-file .env codegen-app
+```
 
-Detached Mode
+##### Detached Mode
+
+```bash
 docker run -d -p 8000:8000 -p 8501:8501 --env-file .env codegen-app
+```
 
-The application will be available at:
+### Accessing the Application
 
-FastAPI backend: http://localhost:8000
-Streamlit frontend: http://localhost:8501
+- FastAPI backend: [http://localhost:8000](http://localhost:8000)  
+- Streamlit frontend: [http://localhost:8501](http://localhost:8501)
 
-Accessing the Application
+---
 
-FastAPI Backend: Access the backend at http://localhost:8000
-Interactive API docs: http://localhost:8000/docs
-Alternative API docs: http://localhost:8000/redoc
+## ⚙️ Environment Variables
 
+Create a `.env` file in the root directory:
 
-Streamlit Frontend: Access the frontend at http://localhost:8501
-
-Environment Variables
-Create a .env file in the root directory:
+```
 DATABASE_URL=sqlite:///./test.db
 SECRET_KEY=your-secret-key
 DEBUG=True
 BACKEND_URL=http://localhost:8000
+```
 
-Development Tips
-Hot Reload
+---
 
-FastAPI: Use --reload flag for automatic reload on code changes
-Streamlit: Streamlit automatically reloads when you save changes to your files
+## 💡 Development Tips
 
-API Testing
+### Hot Reload
 
-Use the FastAPI interactive docs at http://localhost:8000/docs
-Test API endpoints with tools like Postman or curl
+- **FastAPI:** Use `--reload` flag  
+- **Streamlit:** Automatically reloads on file save
 
-Debugging
-Local Development
-# Run FastAPI with debug logging
+### API Testing
+
+- Use FastAPI docs: [http://localhost:8000/docs](http://localhost:8000/docs)  
+- Or tools like Postman or `curl`
+
+### Debugging
+
+#### FastAPI
+
+```bash
 cd backend
 fastapi dev main.py
+```
 
-# Run Streamlit with debug mode
+#### Streamlit
+
+```bash
 cd frontend
 streamlit run app.py --logger.level debug
+```
 
-Contributing
+---
 
-Fork the repository
-Create your feature branch (git checkout -b feature/amazing-feature)
-Commit your changes (git commit -m 'Add some amazing feature')
-Push to the branch (git push origin feature/amazing-feature)
-Open a Pull Request
+## 🤝 Contributing
+
+1. Fork the repository  
+2. Create your feature branch:  
+   `git checkout -b feature/amazing-feature`  
+3. Commit your changes:  
+   `git commit -m 'Add some amazing feature'`  
+4. Push to the branch:  
+   `git push origin feature/amazing-feature`  
+5. Open a Pull Request
