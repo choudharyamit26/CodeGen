@@ -6,27 +6,47 @@ import asyncio
 import json
 import uuid
 import os
-import aiofiles
-from database import engine, SessionLocal, Base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-from file_processing import file_to_text as image_to_text
-from groq_client import (
-    generate_ui_code,
-    generate_db_schema,
-    generate_backend_code,
-    generate_db_queries,
-    generate_technical_docs,
-    generate_er_diagram,
-    generate_core_language_code,
-    detect_stack_with_langchain,
-    analyze_request,
-    determine_generation_types,
-    CodeAnalysis,
-    # Legacy functions for backward compatibility
-    detect_stack,
-)
-from models import GenerationRecord
+import aiofiles
+
+try:
+    from .database import engine, SessionLocal, Base
+    from .file_processing import file_to_text as image_to_text
+    from .groq_client import (
+        generate_ui_code,
+        generate_db_schema,
+        generate_backend_code,
+        generate_db_queries,
+        generate_technical_docs,
+        generate_er_diagram,
+        generate_core_language_code,
+        detect_stack_with_langchain,
+        analyze_request,
+        determine_generation_types,
+        CodeAnalysis,
+        # Legacy functions for backward compatibility
+        detect_stack,
+    )
+    from .models import GenerationRecord
+except:
+    from database import engine, SessionLocal, Base
+    from file_processing import file_to_text as image_to_text
+    from .groq_client import (
+        generate_ui_code,
+        generate_db_schema,
+        generate_backend_code,
+        generate_db_queries,
+        generate_technical_docs,
+        generate_er_diagram,
+        generate_core_language_code,
+        detect_stack_with_langchain,
+        analyze_request,
+        determine_generation_types,
+        CodeAnalysis,
+        detect_stack,
+    )
+    from .models import GenerationRecord
 from typing import Optional
 from sqlalchemy.exc import OperationalError
 import logging
