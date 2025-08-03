@@ -7,12 +7,26 @@ import json
 import uuid
 import os
 import aiofiles
-from database import engine, SessionLocal, Base
+from .database import engine, SessionLocal, Base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-import file_processing
-import groq_client
-import models
+from .file_processing import file_to_text as image_to_text
+from .groq_client import (
+    generate_ui_code,
+    generate_db_schema,
+    generate_backend_code,
+    generate_db_queries,
+    generate_technical_docs,
+    generate_er_diagram,
+    generate_core_language_code,
+    detect_stack_with_langchain,
+    analyze_request,
+    determine_generation_types,
+    CodeAnalysis,
+    # Legacy functions for backward compatibility
+    detect_stack,
+)
+from .models import GenerationRecord
 from typing import Optional
 from sqlalchemy.exc import OperationalError
 import logging
@@ -27,7 +41,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Ensure database and tables are created with error handling
 try:
     with engine.connect() as connection:
         logger.info("Database connection successful")
@@ -66,15 +79,17 @@ try:
                     backend_code TEXT,
                     db_queries TEXT,
                     tech_docs TEXT,
+                    er_diagram TEXT,
                     backend_language VARCHAR,
                     framework VARCHAR,
+                    frontend_framework VARCHAR,
                     created_at DATETIME
                 )
             """
                 )
             )
             connection.commit()
-            logger.info("Manually created generation_records table")
+            logger.info("Manually created generation_records table with new columns")
             result = connection.execute(
                 text(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='generation_records';"
@@ -112,8 +127,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-VALID_LANGUAGES = {"python", "javascript", "java", "go"}
-VALID_FRAMEWORKS = {"none", "django", "flask", "fastapi", "express", "spring", "gin"}
 
 
 def get_db():
@@ -134,27 +147,10 @@ def sse_event(event_type: str, data: any):
 async def generation_stream(
     file_path: Optional[str],
     prompt: str,
-    backend_language: str,
-    framework: str,
     generate_types: dict,
     db: Session,
 ):
     try:
-        if backend_language.lower() not in VALID_LANGUAGES:
-            yield sse_event(
-                "error",
-                {
-                    "message": f"Invalid backend language: {backend_language}",
-                    "traceback": "",
-                },
-            )
-            return
-        if framework.lower() not in VALID_FRAMEWORKS:
-            yield sse_event(
-                "error", {"message": f"Invalid framework: {framework}", "traceback": ""}
-            )
-            return
-
         try:
             db.execute(text("SELECT 1 FROM generation_records LIMIT 1"))
             logger.info("Verified generation_records table exists")
@@ -169,11 +165,9 @@ async def generation_stream(
             logger.error(f"Table check failed: {str(e)}\n{traceback.format_exc()}")
             return
 
-        record = models.GenerationRecord(
+        record = GenerationRecord(
             image_path=file_path,
             prompt=prompt,
-            backend_language=backend_language.lower(),
-            framework=framework.lower(),
         )
         db.add(record)
         try:
@@ -194,9 +188,7 @@ async def generation_stream(
         description = ""
         if file_path:
             try:
-                description = await asyncio.to_thread(
-                    file_processing.image_to_text, file_path
-                )
+                description = await asyncio.to_thread(image_to_text, file_path)
                 logger.info(f"Extracted description from image: {description[:100]}...")
             except Exception as e:
                 yield sse_event(
@@ -229,17 +221,91 @@ async def generation_stream(
             )
             return
 
+        # Use LangChain enhanced analysis
+        try:
+            # Analyze the request using LangChain
+            analysis = await analyze_request(full_description)
+            logger.info(f"LangChain analysis: {analysis.dict()}")
+
+            # Use LangChain stack detection (now returns 4 values including frontend_framework)
+            backend_language, framework, use_framework, frontend_framework = (
+                await detect_stack_with_langchain(full_description)
+            )
+            logger.info(
+                f"Detected stack: {backend_language}/{framework}, frontend: {frontend_framework}, use_framework: {use_framework}"
+            )
+
+        except Exception as e:
+            logger.warning(f"LangChain analysis failed, using fallback: {str(e)}")
+            # Fallback to original detection if LangChain fails
+            backend_language, framework = await asyncio.to_thread(
+                detect_stack, full_description
+            )
+            frontend_framework = None
+
+            # Create a simple analysis object for fallback with all required fields
+            analysis = CodeAnalysis(
+                language=backend_language,
+                requires_framework="api" in full_description.lower()
+                or "server" in full_description.lower(),
+                framework=framework,
+                frontend_framework=frontend_framework,
+                code_type=(
+                    "simple_function"
+                    if not (
+                        "api" in full_description.lower()
+                        or "server" in full_description.lower()
+                    )
+                    else "web_api"
+                ),
+                components_needed=["backend_code"],
+                ui_type=frontend_framework,
+            )
+            use_framework = analysis.requires_framework
+
+        record.backend_language = backend_language
+        record.framework = framework if use_framework else "core"
+        record.frontend_framework = frontend_framework
+        db.commit()
+
+        yield sse_event(
+            "config",
+            {
+                "backend_language": backend_language,
+                "framework": framework,
+                "frontend_framework": frontend_framework,
+                "use_framework": use_framework,
+                "analysis": (
+                    analysis.dict() if hasattr(analysis, "dict") else str(analysis)
+                ),
+            },
+        )
+
+        # Update generate_types if not provided or use analysis
+        if not any(generate_types.values()):
+            generate_types = determine_generation_types(analysis)
+            logger.info(f"Updated generate_types from analysis: {generate_types}")
+
         if generate_types.get("ui_code"):
             yield sse_event("progress", {"step": "UI", "status": "started"})
             try:
-                ui_code = await asyncio.to_thread(
-                    groq_client.generate_ui_code, full_description
+                # Pass frontend framework to UI generation
+                ui_code = await generate_ui_code(
+                    full_description, analysis.frontend_framework
                 )
                 record.ui_code = ui_code
                 db.commit()
-                yield sse_event("ui_code", {"code": ui_code})
+                yield sse_event(
+                    "ui_code",
+                    {
+                        "code": ui_code,
+                        "framework": analysis.frontend_framework or "html",
+                    },
+                )
                 yield sse_event("progress", {"step": "UI", "status": "completed"})
-                logger.info("Generated and saved UI code")
+                logger.info(
+                    f"Generated and saved UI code using {analysis.frontend_framework or 'HTML'}"
+                )
             except Exception as e:
                 yield sse_event(
                     "error",
@@ -256,9 +322,7 @@ async def generation_stream(
         if generate_types.get("db_schema"):
             yield sse_event("progress", {"step": "DB Schema", "status": "started"})
             try:
-                db_schema = await asyncio.to_thread(
-                    groq_client.generate_db_schema, full_description
-                )
+                db_schema = await generate_db_schema(full_description)
                 record.db_schema = db_schema
                 db.commit()
                 yield sse_event("db_schema", {"schema": db_schema})
@@ -279,22 +343,52 @@ async def generation_stream(
                 )
                 return
 
+        if generate_types.get("er_diagram"):
+            yield sse_event("progress", {"step": "E-R Diagram", "status": "started"})
+            try:
+                er_diagram = await generate_er_diagram(full_description)
+                record.er_diagram = er_diagram
+                db.commit()
+                yield sse_event("er_diagram", {"diagram": er_diagram})
+                yield sse_event(
+                    "progress", {"step": "E-R Diagram", "status": "completed"}
+                )
+                logger.info("Generated and saved E-R diagram")
+            except Exception as e:
+                yield sse_event(
+                    "error",
+                    {
+                        "message": f"E-R diagram generation failed: {str(e)}",
+                        "traceback": traceback.format_exc(),
+                    },
+                )
+                logger.error(
+                    f"E-R diagram generation failed: {str(e)}\n{traceback.format_exc()}"
+                )
+                return
+
         if generate_types.get("backend_code"):
             yield sse_event("progress", {"step": "Backend", "status": "started"})
             try:
-                backend_code = await asyncio.to_thread(
-                    groq_client.generate_backend_code,
-                    full_description,
-                    backend_language,
-                    framework,
+                # Use the new LangChain-enhanced backend code generation
+                backend_code = await generate_backend_code(
+                    full_description, backend_language, framework, analysis
                 )
+
                 record.backend_code = backend_code
                 db.commit()
                 yield sse_event(
-                    "backend_code", {"code": backend_code, "language": backend_language}
+                    "backend_code",
+                    {
+                        "code": backend_code,
+                        "language": backend_language,
+                        "framework": framework if use_framework else "core",
+                    },
                 )
                 yield sse_event("progress", {"step": "Backend", "status": "completed"})
-                logger.info("Generated and saved backend code")
+                logger.info(
+                    f"Generated and saved backend code using {backend_language}/{framework}"
+                )
             except Exception as e:
                 yield sse_event(
                     "error",
@@ -311,9 +405,7 @@ async def generation_stream(
         if generate_types.get("db_queries"):
             yield sse_event("progress", {"step": "DB Queries", "status": "started"})
             try:
-                db_queries = await asyncio.to_thread(
-                    groq_client.generate_db_queries, full_description
-                )
+                db_queries = await generate_db_queries(full_description)
                 record.db_queries = db_queries
                 db.commit()
                 yield sse_event("db_queries", {"queries": db_queries})
@@ -337,9 +429,7 @@ async def generation_stream(
         if generate_types.get("tech_docs"):
             yield sse_event("progress", {"step": "Documentation", "status": "started"})
             try:
-                tech_docs = await asyncio.to_thread(
-                    groq_client.generate_technical_docs, full_description
-                )
+                tech_docs = await generate_technical_docs(full_description)
                 record.tech_docs = tech_docs
                 db.commit()
                 yield sse_event("tech_docs", {"documentation": tech_docs})
@@ -396,12 +486,14 @@ async def generation_stream(
 async def generate_code(
     file: UploadFile = File(None),
     prompt: str = Form(""),
-    backend_language: str = Form("python"),
-    framework: str = Form("none"),
     generate_types: str = Form("{}"),
     db: Session = Depends(get_db),
 ):
     file_path = None
+    if file:
+        logger.info(f"Received file: {file.filename}, type: {file.content_type}")
+    else:
+        logger.info("No file uploaded")
     if file and file.filename:
         file_ext = file.filename.split(".")[-1].lower()
         if file_ext not in ALLOWED_EXTENSIONS:
@@ -425,25 +517,51 @@ async def generate_code(
     try:
         generate_types_dict = json.loads(generate_types)
     except json.JSONDecodeError:
+        logger.error(f"Invalid generate_types JSON: {traceback.format_exc()}")
         raise HTTPException(status_code=400, detail="Invalid generate_types JSON")
 
     logger.info(
-        f"Starting code generation for prompt: {prompt}, language: {backend_language}, framework: {framework}, generate_types: {generate_types}"
+        f"Starting code generation for prompt: {prompt}, generate_types: {generate_types}"
     )
     return StreamingResponse(
-        generation_stream(
-            file_path, prompt, backend_language, framework, generate_types_dict, db
-        ),
+        generation_stream(file_path, prompt, generate_types_dict, db),
         media_type="text/event-stream",
     )
+
+
+@app.get("/generations")
+def get_generations(db: Session = Depends(get_db)):
+    try:
+        records = (
+            db.query(GenerationRecord)
+            .order_by(GenerationRecord.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "id": record.id,
+                "prompt": record.prompt or "Image-based request",
+                "backend_language": record.backend_language,
+                "framework": record.framework,
+                "frontend_framework": getattr(record, "frontend_framework", None),
+                "created_at": record.created_at.isoformat(),
+            }
+            for record in records
+        ]
+    except Exception as e:
+        logger.error(f"Failed to fetch generations: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch generations: {str(e)}",
+        )
 
 
 @app.get("/generations/{generation_id}")
 def get_generation(generation_id: int, db: Session = Depends(get_db)):
     try:
         record = (
-            db.query(models.GenerationRecord)
-            .filter(models.GenerationRecord.id == generation_id)
+            db.query(GenerationRecord)
+            .filter(GenerationRecord.id == generation_id)
             .first()
         )
         if record:
@@ -458,8 +576,10 @@ def get_generation(generation_id: int, db: Session = Depends(get_db)):
                 "backend_code": record.backend_code,
                 "db_queries": record.db_queries,
                 "tech_docs": record.tech_docs,
+                "er_diagram": getattr(record, "er_diagram", None),
                 "backend_language": record.backend_language,
                 "framework": record.framework,
+                "frontend_framework": getattr(record, "frontend_framework", None),
                 "created_at": record.created_at.isoformat(),
             }
         raise HTTPException(status_code=404, detail="Record not found")
@@ -474,3 +594,76 @@ def get_generation(generation_id: int, db: Session = Depends(get_db)):
                 "traceback": traceback.format_exc(),
             },
         )
+
+
+# New endpoints for enhanced functionality
+@app.get("/supported-frameworks")
+def get_supported_frameworks():
+    """Get list of supported frontend and backend frameworks"""
+    return {
+        "frontend": {
+            "html": "Plain HTML/CSS/JavaScript",
+            "react": "React with Hooks",
+            "vue": "Vue 3 with Composition API",
+            "angular": "Angular with TypeScript",
+        },
+        "backend": {
+            "python": {
+                "core": "Pure Python",
+                "fastapi": "FastAPI Framework",
+                "flask": "Flask Framework",
+                "django": "Django Framework",
+            },
+            "javascript": {"core": "Node.js Core", "express": "Express.js Framework"},
+            "java": {"core": "Core Java", "spring": "Spring Boot Framework"},
+        },
+    }
+
+
+@app.post("/generate-fullstack")
+async def generate_fullstack(
+    file: UploadFile = File(None),
+    prompt: str = Form(""),
+    backend_language: str = Form("python"),
+    frontend_framework: str = Form("react"),
+    db: Session = Depends(get_db),
+):
+    """Generate a complete fullstack application"""
+    # Set generate_types for fullstack
+    generate_types_dict = {
+        "ui_code": True,
+        "db_schema": True,
+        "backend_code": True,
+        "db_queries": True,
+        "tech_docs": True,
+        "er_diagram": True,
+    }
+
+    file_path = None
+    if file and file.filename:
+        file_ext = file.filename.split(".")[-1].lower()
+        if file_ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Allowed: png, jpg, jpeg, pdf",
+            )
+
+        await file.seek(0)
+        content = await file.read()
+        file_size = len(content)
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="File too large. Max size: 5MB")
+        await file.seek(0)
+
+        file_path = f"{UPLOAD_DIR}/{uuid.uuid4()}.{file_ext}"
+        async with aiofiles.open(file_path, "wb") as f:
+            await f.write(content)
+        logger.info(f"Saved uploaded file for fullstack generation: {file_path}")
+
+    logger.info(
+        f"Starting fullstack generation: {backend_language} + {frontend_framework}"
+    )
+    return StreamingResponse(
+        generation_stream(file_path, prompt, generate_types_dict, db),
+        media_type="text/event-stream",
+    )

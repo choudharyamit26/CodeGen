@@ -1,0 +1,36 @@
+2025-07-30 01:22:14,044 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-07-30 01:23:02,342 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:23:02,372 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:25:34,566 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:25:34,578 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:26:59,388 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:26:59,394 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:27:24,982 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-07-30 01:27:58,410 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:27:58,440 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:28:00,477 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:28:00,492 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:29:01,236 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:29:01,262 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:29:59,751 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:29:59,777 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-07-30 01:30:02,566 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-07-30 01:30:02,577 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-08-02 21:01:15,059 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-08-02 21:02:27,133 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-02 21:03:23,055 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-02 21:03:23,120 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 200 None
+2025-08-03 13:20:13,355 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-08-03 13:20:58,813 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-08-03 13:21:57,148 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-08-03 13:22:03,976 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-03 13:22:04,078 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-08-03 13:32:47,538 - INFO - Database initialized with URL: sqlite:///C:\Users\Amit\Desktop\CodeGen\backend\example.db
+2025-08-03 13:32:53,658 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-03 13:32:53,697 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-08-03 13:33:59,575 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-03 13:33:59,614 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
+2025-08-03 13:34:34,853 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-03 13:34:34,894 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 500 21
+2025-08-03 13:35:16,159 - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8000
+2025-08-03 13:35:16,188 - DEBUG - http://127.0.0.1:8000 "POST /generate-code HTTP/1.1" 400 60
